@@ -1,0 +1,43 @@
+name: scrape-wu-eur-ars
+
+on:
+  schedule:
+    # 12:00 y 18:00 ART → 15:00 y 21:00 UTC
+    - cron: "0 15 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scraper
+        env:
+          LOCAL_TZ: America/Argentina/Cordoba
+          WU_XLSX_PATH: wu_eur_ars.xlsx
+        run: |
+          python scrape_wu_eur_ars.py
+
+      - name: Commit & push results (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wu_eur_ars.xlsx
+          git diff --staged --quiet || git commit -m "Update EUR->ARS rate: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          git push
