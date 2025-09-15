@@ -14,19 +14,20 @@ async def fetch_rate():
         page = await browser.new_page()
         await page.goto(URL, timeout=60000)
 
-        # Esperar hasta que aparezca "Tipo de cambio estimado"
-        await page.wait_for_selector("text=Tipo de cambio estimado")
+        # Esperar hasta que aparezca algo con "EUR ="
+        await page.wait_for_selector("text=EUR =")
 
-        # Extraer el texto completo
-        text = await page.inner_text("text=Tipo de cambio estimado")
+        # Buscar el texto completo que contiene la cotización
+        content = await page.content()
 
-        await browser.close()
-
-        # Buscar con regex algo como "1.00 EUR = 1,712.3015"
-        match = re.search(r"1\.00\s*EUR\s*=\s*([\d,\.]+)", text)
+        # Regex: 1.00 EUR = 1,712.3015
+        match = re.search(r"1\.00\s*EUR\s*=\s*([\d\.,]+)", content)
         if not match:
-            raise RuntimeError("No se pudo extraer la cotización del texto")
-        return match.group(0)  # Devuelve "1.00 EUR = 1,712.3015"
+            raise RuntimeError("No se pudo extraer la cotización del HTML")
+        rate_str = f"1.00 EUR = {match.group(1)}"
+        
+        await browser.close()
+        return rate_str
 
 def save_to_excel(date_str, time_str, rate_str):
     path = Path(OUTPUT_FILE)
